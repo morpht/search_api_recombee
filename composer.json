@@ -1,0 +1,15 @@
+{
+  "name": "drupal/search_api_recombee",
+  "description": "Provides Recombee integration as Search API backend for indexing content.",
+  "type": "drupal-module",
+  "license": "GPL-2.0+",
+  "homepage": "https://www.drupal.org/project/search_api_recombee",
+  "support": {
+    "issues": "https://www.drupal.org/project/issues/search_api_recombee",
+    "source": "https://github.com/morpht/search_api_recombee"
+  },
+  "require": {
+    "drupal/search_api": "^1.0",
+    "recombee/php-api-client": "^2.4.0"
+  }
+}

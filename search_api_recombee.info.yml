@@ -1,0 +1,7 @@
+name: Search API Recombee
+type: module
+description: Provides Recombee integration as Search API backend for indexing content.
+core: 8.x
+package: Search
+dependencies:
+  - search_api:search_api

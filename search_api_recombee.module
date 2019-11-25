@@ -1,0 +1,121 @@
+<?php
+
+/**
+ * @file
+ * Search API Recombee module.
+ */
+
+use Drupal\Component\Utility\UrlHelper;
+use Drupal\Core\Form\FormStateInterface;
+
+/**
+ * Implements hook_form_BASE_FORM_ID_alter() for \Drupal\search_api\Form\IndexForm.
+ */
+function search_api_recombee_form_search_api_index_form_alter(&$form, FormStateInterface $form_state, $form_id) {
+  $settings = [
+    'site' => NULL,
+    'base_url' => NULL,
+    'schema' => FALSE,
+  ];
+  /** @var \Drupal\search_api\IndexInterface $index */
+  $index = $form_state->getFormObject()->getEntity();
+  if (!$index->isNew()) {
+    $settings = $index->getThirdPartySettings('search_api_recombee') + $settings;
+  }
+
+  $form['third_party_settings']['search_api_recombee'] = [
+    '#type' => 'details',
+    '#title' => t('Recombee specific index options'),
+    '#open' => TRUE,
+    '#states' => [
+      'visible' => [
+        'input[name="server"]' => ['value' => 'recombee'],
+      ],
+    ],
+  ];
+  $form['third_party_settings']['search_api_recombee']['site'] = [
+    '#type' => 'textfield',
+    '#title' => t('Site ID'),
+    '#description' => t('The unique site ID (used for item ID generation).'),
+    '#default_value' => $settings['site'],
+    '#states' => [
+      'required' => [
+        'input[name="server"]' => ['value' => 'recombee'],
+      ],
+    ],
+  ];
+  $form['third_party_settings']['search_api_recombee']['base_url'] = [
+    '#type' => 'textfield',
+    '#title' => t('Base URL'),
+    '#description' => t('The absolute URL to be prefixed to URL fields. E.g. "@url"', [
+      '@url' => $GLOBALS['base_url'],
+    ]),
+    '#default_value' => $settings['base_url'],
+  ];
+  $form['third_party_settings']['search_api_recombee']['schema'] = [
+    '#type' => 'checkbox',
+    '#title' => t('Control schema'),
+    '#description' => t('If checked, this site can make schema changes in the database.'),
+    '#default_value' => $settings['schema'],
+  ];
+  $form['#validate'][] = 'search_api_recombee_search_api_index_form_validate';
+}
+
+/**
+ * Search API index form validation handler.
+ *
+ * @see search_api_recombee_form_search_api_index_form_alter()
+ */
+function search_api_recombee_search_api_index_form_validate(array &$form, FormStateInterface $form_state) {
+  /** @var \Drupal\search_api\IndexInterface $index */
+  $index = $form_state->getFormObject()->getEntity();
+
+  // Only if Recombee server is used.
+  if ($index->getServerId() === 'recombee') {
+    $element = $form['third_party_settings']['search_api_recombee']['base_url'];
+    $base_url = $form_state->getValue($element['#parents']);
+
+    // Check base URL if configured.
+    if (!empty($base_url)) {
+      if (!UrlHelper::isValid($base_url, TRUE)) {
+        $form_state->setError($element, t('The base URL is invalid.'));
+      }
+      $form_state->setValue($element['#parents'], rtrim($base_url, '/'));
+    }
+  }
+  else {
+    // Clear Recombee specific settings.
+    $form_state->unsetValue(['third_party_settings', 'search_api_recombee']);
+  }
+}
+
+/**
+ * Implements hook_preprocess_HOOK() for table templates.
+ */
+function search_api_recombee_preprocess_table(&$variables) {
+  // Recognize Search API index summary table.
+  if (!empty($variables['attributes']['class'][0])
+    && $variables['attributes']['class'][0] === 'search-api-index-summary'
+  ) {
+    /** @var \Drupal\search_api\IndexInterface $index */
+    $index = \Drupal::routeMatch()->getParameter('search_api_index');
+    if (!empty($index) && $index->getServerId() === 'recombee') {
+
+      // Add Recombee specific settings into this table.
+      $settings = $index->getThirdPartySettings('search_api_recombee');
+      $values = [
+        'Site ID' => $settings['site'],
+        'Base URL' => $settings['base_url'],
+        'Control schema' => empty($settings['schema']) ? t('no') : t('yes'),
+      ];
+      foreach ($values as $label => $value) {
+        $variables['rows'][] = [
+          'cells' => [
+            ['tag' => 'th', 'content' => t($label)],
+            ['tag' => 'td', 'content' => $value],
+          ],
+        ];
+      }
+    }
+  }
+}
