@@ -307,8 +307,11 @@ class Recombee extends BackendPluginBase implements PluginFormInterface {
    * {@inheritdoc}
    */
   public function deleteAllIndexItems(IndexInterface $index, $datasource_id = NULL) {
-    // Call API to clear the whole database.
-    $this->send(new ResetDatabase());
+    $settings = $index->getThirdPartySettings('search_api_recombee');
+    // Call API to clear the whole database if allowed.
+    if (!empty($settings['schema'])) {
+      $this->send(new ResetDatabase());
+    }
   }
 
   /**
