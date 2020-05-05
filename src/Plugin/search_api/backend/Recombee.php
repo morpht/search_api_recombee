@@ -3,7 +3,9 @@
 namespace Drupal\search_api_recombee\Plugin\search_api\backend;
 
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Link;
 use Drupal\Core\Plugin\PluginFormInterface;
+use Drupal\Core\Url;
 use Drupal\search_api\Backend\BackendPluginBase;
 use Drupal\search_api\IndexInterface;
 use Drupal\search_api\Item\Field;
@@ -72,17 +74,25 @@ class Recombee extends BackendPluginBase implements PluginFormInterface {
    * {@inheritdoc}
    */
   public function buildConfigurationForm(array $form, FormStateInterface $form_state) {
+    // Prepare description links.
+    $recombee_link = Link::fromTextAndUrl('Recombee', Url::fromUri('https://admin.recombee.com/'))
+      ->toString();
+
     $form['account'] = [
       '#type' => 'textfield',
       '#title' => $this->t('Database ID'),
-      '#description' => $this->t('The Recombee "API Identifier" value (see "Settings" page).'),
+      '#description' => $this->t('The @recombee "API Identifier" value (see "Settings" page for a database).', [
+        '@recombee' => $recombee_link,
+      ]),
       '#default_value' => $this->configuration['account'],
       '#required' => TRUE,
     ];
     $form['token'] = [
       '#type' => 'textfield',
       '#title' => $this->t('Private token'),
-      '#description' => $this->t('The Recombee "Private token" value (see "Settings" page).'),
+      '#description' => $this->t('The @recombee "Private token" value (see "Settings" page for a database).', [
+        '@recombee' => $recombee_link,
+      ]),
       '#default_value' => $this->configuration['token'],
       '#required' => TRUE,
     ];
@@ -250,18 +260,17 @@ class Recombee extends BackendPluginBase implements PluginFormInterface {
    *   If the Recombee API error occurs.
    */
   protected function indexItem(ItemInterface $item, array $properties, array $settings) {
+    $recombee_config = \Drupal::config('recombee.settings');
+    $site_id = $recombee_config->get('site_id');
+    $base_url = $recombee_config->get('base_url');
     /** @var \Drupal\Core\Entity\EntityInterface $entity */
     $entity = $item->getOriginalObject()->getValue();
 
     // Compose item ID using the site ID, entity type and ID.
-    $item_id = implode('-', [
-      $settings['site'],
-      $entity->getEntityTypeId(),
-      $entity->id(),
-    ]);
+    $item_id = recombee_item_id($entity, $site_id);
 
     $item_values = [
-      'site' => $settings['site'],
+      'site' => $site_id,
     ];
     // Process all configured fields.
     foreach ($item->getFields() as $field_id => $field) {
@@ -272,12 +281,12 @@ class Recombee extends BackendPluginBase implements PluginFormInterface {
       $item_values[$field_id] = $field->getValues();
 
       // Make URL absolute for URI field and image data types.
-      if (!empty($settings['base_url']
+      if (!empty($base_url)
         && ($field->getPropertyPath() === 'search_api_url'
-          || in_array($properties[$field_id], ['image', 'imageList'])))
+          || in_array($properties[$field_id], ['image', 'imageList']))
       ) {
         foreach ($item_values[$field_id] as &$value) {
-          $value = $settings['base_url'] . $value;
+          $value = $base_url . $value;
         }
       }
 
