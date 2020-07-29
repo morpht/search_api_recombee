@@ -55,7 +55,9 @@ class Recombee extends BackendPluginBase implements PluginFormInterface {
       $token = $this->configuration['token'];
 
       // Initialize API client.
-      $this->client = new Client($account, $token);
+      $this->client = new Client($account, $token, 'https', [
+        'serviceName' => 'drupal-search-api-recombee',
+      ]);
     }
     return $this->client;
   }
