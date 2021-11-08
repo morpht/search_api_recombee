@@ -16,6 +16,7 @@ use Drupal\search_api\SearchApiException;
 use Recombee\RecommApi\Client;
 use Recombee\RecommApi\Exceptions\ApiException;
 use Recombee\RecommApi\Requests\AddItemProperty;
+use Recombee\RecommApi\Requests\DeleteItem;
 use Recombee\RecommApi\Requests\DeleteItemProperty;
 use Recombee\RecommApi\Requests\ListItemProperties;
 use Recombee\RecommApi\Requests\Request;
@@ -311,7 +312,18 @@ class Recombee extends BackendPluginBase implements PluginFormInterface {
    * {@inheritdoc}
    */
   public function deleteItems(IndexInterface $index, array $item_ids) {
-    // TODO.
+    $recombee_config = \Drupal::config('recombee.settings');
+    $site_id = $recombee_config->get('site_id');
+
+    foreach ($item_ids as $item_id) {
+      // Convert Search API item ID to Recombee item ID.
+      $item_id = implode('-', array_filter([
+        $site_id,
+        str_replace('/', '-', explode(':', $item_id)[1]),
+      ]));
+      // Call API to delete the item.
+      $this->send(new DeleteItem($item_id));
+    }
   }
 
   /**
